@@ -19,15 +19,13 @@ if 'run_predictions' not in st.session_state:
     st.session_state.run_predictions = False
 
 # Charger ton logo
-# Charger ton logo
-logo_1 = Image.open(r"C:\Users\pc\Desktop\lithology_app\notith_logo.png")
 
 # Config de la page avec ton logo comme icône
+
 st.set_page_config(
     page_title="LithoVision Pro",
-    page_icon=logo_1,   # <-- ici ton logo
-    layout="wide",
-    initial_sidebar_state="expanded"
+    page_icon="src/assets/logo.png",  # ton favicon déjà prêt
+    layout="wide"
 )
 
 # Nouvelle palette adaptée au logo
