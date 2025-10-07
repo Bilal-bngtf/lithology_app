@@ -6,4 +6,5 @@ xgboost
 lasio
 matplotlib
 plotly
+openpyxl
 
