@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 import sys
 import logging
 from pathlib import Path
@@ -18,12 +19,12 @@ if 'run_predictions' not in st.session_state:
     st.session_state.run_predictions = False
 
 # Charger ton logo
-logo_1 = Image.open(r"C:\Users\pc\Desktop\nolithhor_logo.png")
+# logo_1 = Image.open(r"C:\Users\pc\Desktop\NPHILITH\notith_logo.png")
 
 # Config de la page avec ton logo comme icône
 st.set_page_config(
     page_title="LithoVision Pro",
-    page_icon=logo_1,   # <-- ici ton logo
+   # <-- ici ton logo
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -31,14 +32,13 @@ st.set_page_config(
 # Nouvelle palette adaptée au logo
 theme = {
     "primary": "#009688",   # Turquoise (cube)
-    "secondary": "#0D1B26", # Sidebar bleu nuit
-    "background": "#1b3a4b",# Fond clair
+    "secondary": "#162C3E", # Sidebar bleu nuit
+    "background": "#0D1B26",# Fond clair
     "text": "#333333",      # Texte foncé lisible
     "accent": "#FCC13E"     # Jaune doré (symbole central)
 }
 
 # ----- Barre horizontale (option 1: supprimer totalement) -----
-# Réafficher la barre horizontale (header) avec fond vert uni
 st.markdown("""
 <style>
 header[data-testid="stHeader"] {
@@ -50,7 +50,6 @@ header[data-testid="stHeader"] .stDeployButton {display: none;}  /* cacher "Depl
 header[data-testid="stHeader"] button[kind="header"] {display: none;}  /* cacher menu ... */
 </style>
 """, unsafe_allow_html=True)
-
 
 # ----- CSS amélioré -----
 st.markdown(f"""
@@ -95,25 +94,20 @@ st.markdown(f"""
     h1, .stTextInput>div>div>input {{
         color: {theme['accent']} !important;
     }}
-
-
-    
 </style>
 """, unsafe_allow_html=True)
 
-
-
 # Configuration des couleurs de lithologie
 LITHO_COLORS = {
-    "VCL": "#3E4743",
-    "Quartz": "#FDFE02",
-    "Igneous": "#DE6AE5",
-    "PIGE": "#C8C8C8",
-    "Calcite": "#87CEEB",
-    "Anhydrite": "#800080",
-    "Dolomite": "#205C7E",
-    "Halite": "#AAAAFF",
-    "Autres_litho": "#FFFFFF00"
+    "VCL": "#54381F",
+    "Quartz": "#F0AF79",
+    "Igneous": "#73003F",
+    "PIGE": "#06633F",
+    "Calcite": "#87CEEB",  # Bleu clair
+    "Anhydrite": "#5A135A",  # Violet foncé
+    "Dolomite": "#205C7E",  # Bleu foncé
+    "Halite": "#AAAAFF",  # Bleu pâle
+    "Autres_litho": "#D3D3D3"  # Gris clair
 }
 
 @st.cache_resource
@@ -183,7 +177,6 @@ def run_predictions(df, models, VCL_cutoff=0.40):
         features_autres_cls = ['CALX', 'CNC', 'DTCQI', 'GR', 'KTH', 'K', 'PE', 'TH', 'U', 'ZDEN']
         df["Autres_cls"] = models["Autres_cls"].predict(df[features_autres_cls])
         logger.info(f"Autres_cls - Valeurs uniques: {df['Autres_cls'].unique()}")
-        logger.info(f"Autres_cls - Nombre de 1: {sum(df['Autres_cls'] == 1)}")
 
         features_autres_reg = ['CALX', 'GR', 'CNC', 'DTCQI', 'K', 'KTH', 'TH', 'ZDEN']
         mask_autres = df["Autres_cls"] == 1
@@ -192,7 +185,6 @@ def run_predictions(df, models, VCL_cutoff=0.40):
             df.loc[mask_autres, "Autres_reg"] = models["Autres_reg"].predict(
                 df.loc[mask_autres, features_autres_reg]
             )
-        logger.info(f"Autres_reg - Stats: min={df['Autres_reg'].min()}, max={df['Autres_reg'].max()}, >0: {sum(df['Autres_reg'] > 0)}")
 
         # ----------------------- Post-classification -----------------------
         features_post = ['CALX', 'CNC', 'DTCQI', 'GR', 'KTH', 'K', 'PE', 'TH', 'U', 'ZDEN']
@@ -207,74 +199,6 @@ def run_predictions(df, models, VCL_cutoff=0.40):
                 df.loc[mask_autres, features_post]
             )
 
-        logger.info(f"Final_lithology - Valeurs uniques: {df['Final_lithology'].unique()}")
-        logger.info(f"Final_lithology - Counts: {df['Final_lithology'].value_counts()}")    
-
-        # ----------------- Initialisation garantie des colonnes autres lithologies -----------------
-        for col in ['_Calcite_prop', '_Anhydrite_prop', '_Dolomite_prop', '_Halite_prop']:
-            if col not in df.columns:
-                df[col] = 0.0
-
-        # Dictionnaire mapping int → nom
-        int_to_name = {0: "Dolomite", 1: "Anhydrite", 2: "Halite", 3: "Calcite"}
-
-        # Masque lignes "autres" - pour débogage, on peut temporairement enlever la condition Autres_reg > 0
-        au_mask = (df['Autres_cls'] == 1)  # & (df['Autres_reg'] > 0)  # <-- décommentez la condition plus tard
-
-        logger.info(f"Nombre de lignes sélectionnées par au_mask: {au_mask.sum()}")
-        logger.info(f"Autres_reg stats: min={df['Autres_reg'].min()}, max={df['Autres_reg'].max()}")
-        logger.info(f"Final_lithology unique values (au_mask): {df.loc[au_mask, 'Final_lithology'].unique()}")
-        logger.info(f"Final_lithology types (au_mask): {df.loc[au_mask, 'Final_lithology'].apply(type).unique()}")
-
-        if 'Autres_reg' not in df.columns:
-            df['Autres_reg'] = 0.0
-
-        # Remplir les colonnes des minéraux
-        for idx in df[au_mask].index:
-            autres_val = df.at[idx, 'Autres_reg']
-            pred = df.at[idx, 'Final_lithology']
-
-            if pd.isna(pred):
-                continue
-
-            pred_name = None
-            if isinstance(pred, (int, np.integer, float, np.floating)):
-                pred_name = int_to_name.get(int(pred))
-            elif isinstance(pred, str):
-                pred_lower = pred.lower()
-                if 'calcite' in pred_lower:
-                    pred_name = "Calcite"
-                elif 'anhydrite' in pred_lower:
-                    pred_name = "Anhydrite"
-                elif 'dolomite' in pred_lower:
-                    pred_name = "Dolomite"
-                elif 'halite' in pred_lower:
-                    pred_name = "Halite"
-
-            if pred_name == "Calcite":
-                df.at[idx, '_Calcite_prop'] = autres_val
-            elif pred_name == "Anhydrite":
-                df.at[idx, '_Anhydrite_prop'] = autres_val
-            elif pred_name == "Dolomite":
-                df.at[idx, '_Dolomite_prop'] = autres_val
-            elif pred_name == "Halite":
-                df.at[idx, '_Halite_prop'] = autres_val
-
-        # Journaliser pour le débogage
-        logger.info(f"Calcite total: {df['_Calcite_prop'].sum()}")
-        logger.info(f"Anhydrite total: {df['_Anhydrite_prop'].sum()}")
-        logger.info(f"Dolomite total: {df['_Dolomite_prop'].sum()}")
-        logger.info(f"Halite total: {df['_Halite_prop'].sum()}")
-
-        # # Afficher les informations de débogage dans l'interface
-        # st.write(f"Nombre de lignes avec Autres_cls = 1: {sum(df['Autres_cls'] == 1)}")
-        # st.write(f"Autres_reg > 0: {sum(df['Autres_reg'] > 0)}")
-        # st.write(f"Final_lithology valeurs uniques: {df['Final_lithology'].dropna().unique()}")
-        # st.write(f"Total Calcite: {df['_Calcite_prop'].sum()}")
-        # st.write(f"Total Anhydrite: {df['_Anhydrite_prop'].sum()}")
-        # st.write(f"Total Dolomite: {df['_Dolomite_prop'].sum()}")
-        # st.write(f"Total Halite: {df['_Halite_prop'].sum()}")
-
         # ----------------------- PIGE -----------------------
         features_pige = ['CALX', 'GR', 'CNC', 'DTCQI', 'K', 'KTH', 'TH', 'ZDEN', 'VCL_pred']
         df['PIGE_pred'] = models['PIGE_reg'].predict(df[features_pige])
@@ -283,20 +207,6 @@ def run_predictions(df, models, VCL_cutoff=0.40):
         df["PIGE_final"] = df["PIGE_pred"]
         df.loc[df["VCL_pred"] > VCL_cutoff, "PIGE_final"] = 0
 
-        # Appliquer la nouvelle logique
-        # if "PIGE_final" in df.columns and "Quartz_pred" in df.columns:
-        #     mask_condition = (df["PIGE_final"] > 0.02) & (df["Quartz_pred"] > 0.7)
-        #     if mask_condition.any():
-        #         df.loc[mask_condition, "Igneous_cls"] = 0
-        #         df.loc[mask_condition, "_Dolomite_prop"] = 0
-        #         df.loc[mask_condition, "_Calcite_prop"] = 0
-        #         df.loc[mask_condition, "_Anhydrite_prop"] = 0
-        #         df.loc[mask_condition, "_Halite_prop"] = 0
-
-        #     mask_pige_zero = (df["PIGE_final"] <= 0.02)
-        #     if mask_pige_zero.any():
-        #         df.loc[mask_pige_zero, "PIGE_final"] = 0   
-
         return df
 
     except Exception as e:
@@ -304,191 +214,336 @@ def run_predictions(df, models, VCL_cutoff=0.40):
         st.error(f"Erreur de prédiction: {str(e)}")
         return None
 
-    
-
-
-def plot_stacked(results: pd.DataFrame):
-    """Affiche le graphique empilé des lithologies"""
+def plot_curves_and_lithology(results: pd.DataFrame):
+    """Affiche les courbes et la colonne lithologique avec la lithologie dominante"""
     df = results.copy()
 
-    # Vérification et création des colonnes manquantes
-    for col in ['_Calcite_prop', '_Anhydrite_prop', '_Dolomite_prop', '_Halite_prop']:
-        if col not in df.columns:
-            df[col] = 0.0
-            st.warning(f"La colonne {col} était absente et a été créée avec des zéros.")
-        elif df[col].sum() == 0:
-            st.warning(f"La colonne {col} contient uniquement des zéros.")
-
     # Vérification des colonnes requises
-    required_columns = ['DEPTH', 'VCL_pred', 'Quartz_pred', 'Igneous_reg', 'PIGE_final']
+    required_columns = ['DEPTH', 'VCL_pred', 'Quartz_pred', 'PIGE_final']
     missing_columns = [col for col in required_columns if col not in df.columns]
     if missing_columns:
         st.error(f"Colonnes manquantes dans les données : {', '.join(missing_columns)}")
         return
 
-    # Préparer les données brutes
-    VCL_raw = df.get('VCL_pred', pd.Series(0.0, index=df.index)).clip(lower=0)
-    Q_raw = df.get('Quartz_pred', pd.Series(0.0, index=df.index)).clip(lower=0)
-    I_raw = df.get('Igneous_reg', pd.Series(0.0, index=df.index)).clip(lower=0)
-    P_raw = df.get('PIGE_final', pd.Series(0.0, index=df.index)).clip(lower=0)
-    C_raw = df['_Calcite_prop'].clip(lower=0)
-    A_raw = df['_Anhydrite_prop'].clip(lower=0)
-    D_raw = df['_Dolomite_prop'].clip(lower=0)
-    H_raw = df['_Halite_prop'].clip(lower=0)
+    # Vérifier les colonnes optionnelles
+    for col in ['Igneous_reg', 'Autres_reg', 'Final_lithology']:
+        if col not in df.columns:
+            if col == 'Final_lithology':
+                df[col] = np.nan
+            else:
+                df[col] = 0.0
 
-    # Normalisation
-    non_vcl_sum = Q_raw + I_raw + C_raw + A_raw + D_raw + H_raw + P_raw
-    target_non_vcl = (1.0 - VCL_raw).clip(lower=0)
-    scale = pd.Series(0.0, index=df.index)
-    nz = non_vcl_sum > 0
-    scale.loc[nz] = target_non_vcl.loc[nz] / non_vcl_sum.loc[nz]
-    scale.fillna(0, inplace=True)
-
-    Q = Q_raw * scale
-    I = I_raw * scale
-    C = C_raw * scale
-    A = A_raw * scale
-    D = D_raw * scale
-    H = H_raw * scale
-    P = P_raw * scale
-    V = VCL_raw
-
-    # Vérification des bornes
-    for s in (Q, I, C, A, D, H, P, V):
-        s.clip(lower=0, upper=1, inplace=True)
-
-    # Tri des profondeurs
+    # Préparer les données et trier par profondeur
     depth = df['DEPTH'].values
     order = np.argsort(depth)
     depth = depth[order]
-    V = V.values[order]; Q = Q.values[order]; I = I.values[order]
-    C = C.values[order]; A = A.values[order]; D = D.values[order]; H = H.values[order]; P = P.values[order]
-
-    # Calcul des limites
-    left_V = np.zeros_like(V)
-    right_V = V
-
-    left_Q = right_V
-    right_Q = left_Q + Q
-
-    left_I = right_Q
-    right_I = left_I + I
-
-    left_C = right_I
-    right_C = left_C + C
-
-    left_A = right_C
-    right_A = left_A + A
-
-    left_D = right_A
-    right_D = left_D + D
-
-    left_H = right_D
-    right_H = left_H + H
-
-    left_P = right_H
-    right_P = left_P + P
-
-    fig, ax = plt.subplots(figsize=(1.5, 60))
-
-    lithologies = [
-        ("VCL", left_V, right_V),
-        ("Quartz", left_Q, right_Q),
-        ("Igneous", left_I, right_I),
-        ("Calcite", left_C, right_C),
-        ("Anhydrite", left_A, right_A),
-        ("Dolomite", left_D, right_D),
-        ("Halite", left_H, right_H),
-        ("PIGE", left_P, right_P)
-    ]
-
-    for litho, left, right in lithologies:
-        if litho in LITHO_COLORS and (right > left).any():
-            ax.fill_betweenx(
-                depth,
-                left,
-                right,
-                facecolor=LITHO_COLORS[litho],
-                edgecolor="black", linewidth=0.3,
-                label=litho
-            )
-
-    # Configuration du graphique
-    ax.set_xlim(0, 1)
-
-# Fixer les bornes de profondeur exactement au min/max
-    ax.set_ylim(depth.min(), depth.max())
-
-# Inverser l'axe Y (comme habituellement en géologie)
-    ax.invert_yaxis()
-
-# Labels avec couleur jaune
-    ax.set_xlabel("Proportion", fontsize=4, color="#FCC13E")
-    ax.set_ylabel("Profondeur (m)", fontsize=4, color="#FCC13E")
-    ax.set_title("Profil Lithologique", fontsize=9, fontweight="bold", color="#FCC13E")
-    ax.set_xlim(0, 1)
-    ax.xaxis.set_ticks_position("top")
-    ax.xaxis.set_label_position("top")
-    ax.tick_params(axis='x', colors="#FCC13E", labelsize=7, top=True, bottom=False)
-    ax.set_xlabel("Proportion", fontsize=10, color="#FCC13E")
-    ax.spines['bottom'].set_visible(False)
-    ax.tick_params(axis='y', colors="#FCC13E",color="#FCC13E", labelsize=7)
-    ax.yaxis.set_major_locator(MultipleLocator(5))
-    ax.legend(
-        loc="upper right",
-        bbox_to_anchor=(1.9, 1),
-        frameon=True,
-        fontsize=6,
-        title="Lithologies",
-        title_fontsize=8,
-        labelcolor="#FCC13E"  
-        )
-    plt.setp(ax.get_legend().get_title(), color="#FCC13E")
     
-    fig.patch.set_alpha(0.0)
-    ax.set_facecolor("none")
+    VSH = df['VCL_pred'].values[order].clip(0, 1)
+    Quartz_raw = df['Quartz_pred'].values[order].clip(0, 1)
+    PIGE_original = df['PIGE_final'].values[order].clip(0, 1)
+    Igneous = df['Igneous_reg'].values[order].clip(0, 1)
     
-    for spine in ax.spines.values():
-        spine.set_edgecolor("#0D1B26")
-        spine.set_linewidth(1.0)
-        
+    # IMPORTANT: Autres_reg représente la SOMME de toutes les autres lithologies
+    Autres_reg = df['Autres_reg'].values[order].clip(0, 1)
+    
+    # Final_lithology nous dit QUELLE lithologie spécifique c'est (Calcite, Dolomite, etc.)
+    Final_lithology = df['Final_lithology'].values[order]
+    
+    # CONTRAINTE: PIGE = 0 si VCL > cutoff OU Igneous > 0 OU Autres_litho > 0
+    vcl_cutoff = 0.40
+    PIGE = PIGE_original.copy()
+    mask_pige_zero = (VSH > vcl_cutoff) | (Igneous > 0) | (Autres_reg > 0)
+    PIGE[mask_pige_zero] = 0.0
+    
+    Quartz_PIGE = (Quartz_raw + PIGE).clip(0, 1)  # Quartz = Quartz + PIGE
+
+    # Calculer la lithologie dominante pour chaque profondeur
+    # Priorité: VCL >= autres (si égalité, VCL gagne)
+    litho_matrix = np.column_stack([VSH, Quartz_PIGE, Igneous, Autres_reg])
+    litho_names_priority = ['VCL', 'Quartz', 'Igneous', 'Autres']
+    
+    # Trouver l'indice du maximum
+    dominant_litho_idx = np.argmax(litho_matrix, axis=1)
+    max_values = np.max(litho_matrix, axis=1)
+    
+    # Si VCL >= max_value, forcer VCL comme dominant
+    vcl_dominant_mask = VSH >= max_values
+    dominant_litho_idx[vcl_dominant_mask] = 0  # 0 = VCL
+    
+    dominant_litho = np.array([litho_names_priority[idx] for idx in dominant_litho_idx])
+    
+    # Pour les "Autres", déterminer la lithologie spécifique à partir de Final_lithology
+    autres_mask = dominant_litho == 'Autres'
+    
+    # Mapping des valeurs de Final_lithology vers les noms
+    int_to_name = {0: "Dolomite", 1: "Anhydrite", 2: "Halite", 3: "Calcite"}
+    
+    # Compteurs pour diagnostic
+    debug_counts = {"Total_Autres": autres_mask.sum(), "NaN": 0, "Mapped": 0, "Unknown": 0}
+    lithology_found = {"Calcite": 0, "Dolomite": 0, "Anhydrite": 0, "Halite": 0, "Autres_litho": 0}
+    
+    if autres_mask.any():
+        for i in np.where(autres_mask)[0]:
+            final_val = Final_lithology[i]
+            
+            # Si Final_lithology est défini, on utilise la lithologie spécifique
+            if pd.isna(final_val):
+                dominant_litho[i] = "Autres_litho"
+                debug_counts["NaN"] += 1
+                lithology_found["Autres_litho"] += 1
+            else:
+                # Essayer de convertir en int/float
+                try:
+                    # Si c'est un nombre (int, float, ou string numérique)
+                    if isinstance(final_val, (int, np.integer, float, np.floating)):
+                        litho_code = int(final_val)
+                        litho_name = int_to_name.get(litho_code, "Autres_litho")
+                        debug_counts["Mapped"] += 1
+                    elif isinstance(final_val, str):
+                        # Essayer de convertir string en int
+                        try:
+                            litho_code = int(float(final_val))
+                            litho_name = int_to_name.get(litho_code, "Autres_litho")
+                            debug_counts["Mapped"] += 1
+                        except ValueError:
+                            # Si c'est un string non-numérique
+                            final_lower = final_val.lower()
+                            if 'calcite' in final_lower:
+                                litho_name = "Calcite"
+                            elif 'anhydrite' in final_lower:
+                                litho_name = "Anhydrite"
+                            elif 'dolomite' in final_lower:
+                                litho_name = "Dolomite"
+                            elif 'halite' in final_lower:
+                                litho_name = "Halite"
+                            else:
+                                litho_name = "Autres_litho"
+                                debug_counts["Unknown"] += 1
+                            debug_counts["Mapped"] += 1
+                    else:
+                        litho_name = "Autres_litho"
+                        debug_counts["Unknown"] += 1
+                    
+                    dominant_litho[i] = litho_name
+                    lithology_found[litho_name] = lithology_found.get(litho_name, 0) + 1
+                    
+                except Exception as e:
+                    dominant_litho[i] = "Autres_litho"
+                    debug_counts["Unknown"] += 1
+                    lithology_found["Autres_litho"] += 1
+    
+    # Stocker les infos de debug pour affichage plus tard
+    debug_info = {
+        "debug_counts": debug_counts,
+        "lithology_found": lithology_found,
+        "sample_values": Final_lithology[autres_mask][:10] if autres_mask.any() else []
+    }
+
+    # Limites de profondeur
+    depth_min = depth.min()
+    depth_max = depth.max()
+
+    # Création de la figure avec gridspec
+    fig = plt.figure(figsize=(14, 60))
+    fig.patch.set_facecolor("#0D1B26")
+    gs = gridspec.GridSpec(1, 6, width_ratios=[1, 1, 1, 1, 0.05, 1.2], wspace=0.4)
+
+    # ============ TRACK 1: VSH ============
+    ax1 = fig.add_subplot(gs[0, 0])
+    ax1.plot(VSH, depth, color="#54381F", linewidth=1.5)
+    ax1.fill_betweenx(depth, 0, VSH, facecolor="#54381F", alpha=0.9, edgecolor="black", linewidth=0.3)
+    ax1.set_xlim(0, 1)
+    ax1.set_ylim(depth_max, depth_min)
+    ax1.set_title("VSH", fontsize=11, fontweight="bold", color="#FCC13E", pad=15)
+    ax1.xaxis.set_ticks_position("top")
+    ax1.xaxis.set_label_position("top")
+    ax1.tick_params(axis='x', labelsize=8, colors="#FFFFFF", top=True, bottom=False)
+    ax1.tick_params(axis='y', labelsize=0)
+    ax1.grid(True, alpha=0.3, color="#0E4470", linestyle='--', linewidth=0.3, axis='x')
+    ax1.set_facecolor("#0D1B26")
+
+    # ============ TRACK 2: Quartz + PIGE ============
+    ax2 = fig.add_subplot(gs[0, 1], sharey=ax1)
+    ax2.fill_betweenx(depth, 0, PIGE, facecolor="#009688", alpha=1, edgecolor="black", 
+                      linewidth=0.3, label="PIGE")
+    ax2.fill_betweenx(depth, PIGE, Quartz_PIGE, facecolor="#F0AF79", alpha=0.9, 
+                      edgecolor="black", linewidth=0.3, label="Quartz")
+    ax2.plot(Quartz_PIGE, depth, color="#000000", linewidth=1, linestyle="-", alpha=0.5)
+    ax2.set_xlim(0, 1)
+    ax2.set_ylim(depth_max, depth_min)
+    ax2.set_title("PIGE + Quartz", fontsize=11, fontweight="bold", color="#FCC13E", pad=15)
+    ax2.xaxis.set_ticks_position("top")
+    ax2.xaxis.set_label_position("top")
+    ax2.tick_params(axis='x', labelsize=8, colors="#FFFFFF", top=True, bottom=False)
+    ax2.tick_params(axis='y', labelsize=0)
+    ax2.grid(True, alpha=0.3, color='#0E4470', linestyle='--', linewidth=0.3, axis='x')
+    ax2.set_facecolor("#0D1B26")
+
+    # ============ TRACK 3: Igneous ============
+    ax3 = fig.add_subplot(gs[0, 2], sharey=ax1)
+    ax3.fill_betweenx(depth, 0, Igneous, facecolor="#73003F", alpha=0.9, 
+                      edgecolor="black", linewidth=0.3)
+    ax3.plot(Igneous, depth, color="#000000", linewidth=1, linestyle="-", alpha=0.5)
+    ax3.set_xlim(0, 1)
+    ax3.set_ylim(depth_max, depth_min)
+    ax3.set_title("Igneous", fontsize=11, fontweight="bold", color="#FCC13E", pad=15)
+    ax3.xaxis.set_ticks_position("top")
+    ax3.xaxis.set_label_position("top")
+    ax3.tick_params(axis='x', labelsize=8, colors="#FFFFFF", top=True, bottom=False)
+    ax3.tick_params(axis='y', labelsize=0)
+    ax3.grid(True, alpha=0.3, color='#0E4470', linestyle='--', linewidth=0.3, axis='x')
+    ax3.set_facecolor("#0D1B26")
+
+    # ============ TRACK 4: Autres Lithologies (Autres_reg TOTAL) ============
+    ax4 = fig.add_subplot(gs[0, 3], sharey=ax1)
+    
+    # Afficher simplement Autres_reg en couleur neutre
+    ax4.fill_betweenx(depth, 0, Autres_reg, facecolor="#D3D3D3", alpha=0.8, 
+                      edgecolor="black", linewidth=0.3, label="Autres Lithologies")
+    ax4.plot(Autres_reg, depth, color="#000000", linewidth=1, linestyle="-", alpha=0.5)
+    
+    ax4.set_xlim(0, 1)
+    ax4.set_ylim(depth_max, depth_min)
+    ax4.set_title("Autres Lithologies", fontsize=11, fontweight="bold", color="#FCC13E", pad=15)
+    ax4.xaxis.set_ticks_position("top")
+    ax4.xaxis.set_label_position("top")
+    ax4.tick_params(axis='x', labelsize=8, colors="#FFFFFF", top=True, bottom=False)
+    ax4.tick_params(axis='y', labelsize=0)
+    ax4.grid(True, alpha=0.3, color='#0E4470', linestyle='--', linewidth=0.3, axis='x')
+    ax4.set_facecolor("#0D1B26")
+
+    # ============ TRACK 5: Profondeur ============
+    ax5 = fig.add_subplot(gs[0, 4], sharey=ax1)
+    ax5.set_xlim(0, 1)
+    ax5.set_ylim(depth_max, depth_min)
+    ax5.set_title("Depth (m)", fontsize=11, fontweight="bold", color="#FCC13E", pad=30)
+    ax5.yaxis.set_major_locator(MultipleLocator(10))
+    ax5.yaxis.set_minor_locator(MultipleLocator(2))
+    ax5.tick_params(axis='y', labelsize=8, colors="#FFFFFF", which='both', left=False, right=True, labelleft=False, labelright=True)
+    ax5.tick_params(axis='x', labelsize=0, top=False, bottom=False)
+    ax5.grid(True, alpha=0.4, color='#0E4470', linestyle='-', linewidth=0.5, axis='y', which='major')
+    ax5.grid(True, alpha=0.2, color='#0E4470', linestyle='--', linewidth=0.3, axis='y', which='minor')
+    ax5.set_xticks([])
+    ax5.set_facecolor("#FCC13E")
+    ax5.yaxis.set_label_position("right")
+
+    # ============ TRACK 6: Colonne Lithologique DOMINANTE ============
+    ax6 = fig.add_subplot(gs[0, 5], sharey=ax1)
+    
+    # Debug: Compter les lithologies uniques dans dominant_litho
+    unique_lithos = np.unique(dominant_litho)
+    litho_color_check = {}
+    for litho in unique_lithos:
+        color = LITHO_COLORS.get(litho, '#D3D3D3')
+        litho_color_check[litho] = color
+    
+    # Grouper les segments continus de même lithologie
+    current_litho = dominant_litho[0]
+    start_depth = depth[0]
+    
+    for i in range(1, len(depth)):
+        if dominant_litho[i] != current_litho or i == len(depth) - 1:
+            # Fin du segment
+            end_depth = depth[i] if i == len(depth) - 1 else depth[i-1]
+            color = LITHO_COLORS.get(current_litho, '#D3D3D3')
+            ax6.fill_between([0, 1], start_depth, end_depth, 
+                             facecolor=color, edgecolor='black', linewidth=0.5)
+            # Nouveau segment
+            current_litho = dominant_litho[i]
+            start_depth = depth[i]
+    
+    # Dernier segment
+    color = LITHO_COLORS.get(current_litho, '#D3D3D3')
+    ax6.fill_between([0, 1], start_depth, depth[-1], 
+                     facecolor=color, edgecolor='black', linewidth=0.5)
+    
+    ax6.set_xlim(0, 1)
+    ax6.set_ylim(depth_max, depth_min)
+    ax6.set_title("Lithologie\nDominante", fontsize=11, fontweight="bold", color="#FCC13E", pad=20)
+    ax6.set_xticks([])
+    ax6.tick_params(axis='y', labelsize=0)
+    ax6.set_facecolor("#0D1B26")
+    
+    # Ajouter la légende
+    from matplotlib.patches import Patch
+    litho_legend_names = ['VCL', 'Quartz', 'Igneous', 'Calcite', 'Anhydrite', 'Dolomite', 'Halite', 'Autres_litho']
+    legend_elements = [Patch(facecolor=LITHO_COLORS[name], edgecolor='black', label=name) 
+                      for name in litho_legend_names if name in LITHO_COLORS]
+    ax6.legend(handles=legend_elements, loc='upper right', bbox_to_anchor=(1.7, 1.0),
+               fontsize=7, frameon=True, facecolor='#0D1B26', edgecolor="#FFFFFF", 
+               labelcolor="#FFFFFF", title='Lithologies', title_fontsize=8)
+    plt.setp(ax6.get_legend().get_title(), color="#FCC13E")
+    
+    # Stocker les infos de couleurs pour le diagnostic
+    debug_info['litho_color_check'] = litho_color_check
+
+    # Style général - bordures
+    for ax in [ax1, ax2, ax3, ax4, ax5, ax6]:
+        for spine in ax.spines.values():
+            spine.set_edgecolor("#FFFFFF")
+            spine.set_linewidth(1.2)
+
+    plt.tight_layout()
     st.pyplot(fig)
 
-# -------------------- Interface utilisateur --------------------
-st.title("🛢️ LithoVision Pro")
-st.markdown("---")
-from PIL import Image
-import streamlit as st
-
-
-# Charger le logo
-logo = Image.open(r"C:\Users\pc\Desktop\nolith_logo.png")
-
-with st.sidebar:
-    st.markdown(
-        """
-        <style>
-        [data-testid="stSidebar"] img {
-            display: block;
-            margin-left: auto;
-            margin-right: auto;
-            width: 80%; /* ajuste à 80% de la largeur pour garder qualité */
-        }
-        [data-testid="stSidebar"] h2 {
-            text-align: center;
-            font-weight: bold;
-            color: #FCC13E;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-    st.image(logo)  # pas de width ici, on laisse CSS gérer
-    # st.markdown("<h2>NφLITH</h2>", unsafe_allow_html=True)
+    # ============ Statistiques ============
+    st.markdown("### 📊 Statistiques des prédictions")
+    
+    # DIAGNOSTIC: Afficher les infos de mapping des autres lithologies
+    st.markdown("#### 🔍 Diagnostic - Mapping des Autres Lithologies")
+    st.write(f"**Total de points où 'Autres' domine:** {debug_info['debug_counts']['Total_Autres']}")
+    st.write(f"**Valeurs NaN (non classifiées):** {debug_info['debug_counts']['NaN']}")
+    st.write(f"**Valeurs mappées avec succès:** {debug_info['debug_counts']['Mapped']}")
+    st.write(f"**Valeurs inconnues:** {debug_info['debug_counts']['Unknown']}")
+    
+    st.write("**Lithologies spécifiques trouvées:**")
+    for litho, count in debug_info['lithology_found'].items():
+        if count > 0:
+            st.write(f"- {litho}: {count} points")
+    
+    if len(debug_info['sample_values']) > 0:
+        st.write(f"**Échantillon de Final_lithology (10 premiers):** {list(debug_info['sample_values'])}")
+    
+    # Afficher le mapping couleur/lithologie
+    st.write("**Couleurs assignées dans Track 6:**")
+    for litho, color in debug_info['litho_color_check'].items():
+        st.markdown(f"- {litho}: <span style='color:{color}; font-weight:bold;'>███</span> {color}", unsafe_allow_html=True)
+    
     st.markdown("---")
+    
+    # Comptage des lithologies dominantes
+    from collections import Counter
+    litho_counts = Counter(dominant_litho)
+    
+    st.write("**Répartition des lithologies dominantes:**")
+    for litho, count in litho_counts.most_common():
+        percentage = (count / len(dominant_litho)) * 100
+        color = LITHO_COLORS.get(litho, '#D3D3D3')
+        st.markdown(f"- <span style='color:{color}; font-weight:bold;'>███</span> {litho}: {count} points ({percentage:.1f}%)", unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("VCL moyen", f"{VSH.mean():.2%}")
+        st.metric("VCL max", f"{VSH.max():.2%}")
+    
+    with col2:
+        st.metric("Quartz+PIGE moyen", f"{Quartz_PIGE.mean():.2%}")
+        st.metric("PIGE moyen", f"{PIGE.mean():.2%}")
+    
+    with col3:
+        st.metric("Igneous moyen", f"{Igneous.mean():.2%}")
+        st.metric("Igneous max", f"{Igneous.max():.2%}")
+    
+    with col4:
+        st.metric("Autres lithologies", f"{Autres_reg.mean():.2%}")
+        st.metric("Autres max", f"{Autres_reg.max():.2%}")
 
-
-
+# -------------------- Interface utilisateur --------------------
+st.title("LithoVision Pro")
+st.markdown("---")
 
 with st.sidebar:
     st.header("Configuration")
@@ -497,13 +552,6 @@ with st.sidebar:
     vcl_cutoff = st.slider("VshCut-Off", 0.1, 0.9, 0.4, 0.01, 
                           help="Seuil de coupure pour la fraction d'argile (PIGE=0 si VCL>cutoff)")
     run = st.button("Lancer la prédiction")
-
-st.set_page_config(
-    page_title="LithoVision Pro",
-    layout="wide",
-    initial_sidebar_state="expanded"  # 👈 toujours ouverte au lancement
-)
-
 
 if up:
     df = process_file(up)
@@ -520,12 +568,10 @@ if up:
                     st.stop()
                 res = run_predictions(df.copy(), models, VCL_cutoff=vcl_cutoff)
                 if res is not None:
-                    plot_stacked(res)
+                    plot_curves_and_lithology(res)
                     st.success("Terminé ✅")
 else:
     st.info("Veuillez importer un fichier CSV ou Excel.")
-
-
 
 st.markdown("---")
 st.subheader("⭐ Donnez-nous votre avis")
@@ -538,6 +584,5 @@ comment = st.text_area("Vos commentaires / suggestions :")
 
 if st.button("Envoyer l'avis"):
     st.success("✅ Merci pour votre retour !")
-    # Ici tu peux stocker les données dans un fichier ou une base
     with open("feedback.txt", "a", encoding="utf-8") as f:
         f.write(f"Note: {rating}/5 | Commentaire: {comment}\n")
