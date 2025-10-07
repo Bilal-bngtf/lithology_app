@@ -133,18 +133,34 @@ def load_models():
 
 def process_file(uploaded_file):
     """Charge et prétraite le fichier"""
+    import pandas as pd
+    import streamlit as st
+    import logging
+
+    logger = logging.getLogger(__name__)
+
     try:
         if uploaded_file.name.endswith('.csv'):
-            return pd.read_csv(uploaded_file)
+            df = pd.read_csv(uploaded_file)
         elif uploaded_file.name.endswith('.xlsx'):
-            return pd.read_excel(uploaded_file)
+            df = pd.read_excel(uploaded_file)
         else:
-            st.error("Format de fichier non supporté. Utilisez CSV ou XLSX.")
+            st.error("⚠️ Format de fichier non supporté. Utilisez CSV ou XLSX.")
             return None
+
+        # Vérifie si le fichier contient des colonnes
+        if df.empty:
+            st.error("⚠️ Le fichier est vide.")
+            return None
+
+        return df
+
     except Exception as e:
-        logger.error(f"Erreur de traitement du fichier: {str(e)}")
-        st.error("Erreur de lecture du fichier")
+        msg = f"Erreur de traitement du fichier: {str(e)}"
+        logger.error(msg)
+        st.error(f"❌ Erreur de lecture du fichier : {e}")
         return None
+
 
 def run_predictions(df, models, VCL_cutoff=0.40):
     """Exécute les prédictions de lithologie"""
@@ -585,3 +601,15 @@ if st.button("Envoyer l'avis"):
     st.success("✅ Merci pour votre retour !")
     with open("feedback.txt", "a", encoding="utf-8") as f:
         f.write(f"Note: {rating}/5 | Commentaire: {comment}\n")
+
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+
+# Connexion à ton Google Sheet (avec clés API dans secrets)
+scope = ["https://spreadsheets.google.com/feeds",
+         "https://www.googleapis.com/auth/drive"]
+creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+client = gspread.authorize(creds)
+
+sheet = client.open("Lithology Feedback").sheet1
+sheet.append_row([rating, comment])
