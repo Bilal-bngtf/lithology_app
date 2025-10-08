@@ -177,7 +177,7 @@ def clean_dataset(df):
 
     # Heatmap interactive
     fig, ax = plt.subplots(figsize=(12, 5))
-    sns.heatmap(df_cleaned[X_cols].isnull(), cmap="viridis", cbar=False, ax=ax)
+    # sns.heatmap(df_cleaned[X_cols].isnull(), cmap="viridis", cbar=False, ax=ax)
     ax.set_title("✅ Heatmap après nettoyage des valeurs manquantes")
     st.pyplot(fig)
 
