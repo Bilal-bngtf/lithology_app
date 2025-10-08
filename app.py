@@ -588,29 +588,29 @@ if up:
 else:
     st.info("Veuillez importer un fichier CSV ou Excel.")
 
-st.markdown("---")
-st.subheader("⭐ Donnez-nous votre avis")
+# st.markdown("---")
+# st.subheader("⭐ Donnez-nous votre avis")
 
-# Système de notation par étoiles
-rating = st.slider("Évaluez l'outil :", 1, 5, 3)
+# # Système de notation par étoiles
+# rating = st.slider("Évaluez l'outil :", 1, 5, 3)
 
-# Champ commentaire
-comment = st.text_area("Vos commentaires / suggestions :")
+# # Champ commentaire
+# comment = st.text_area("Vos commentaires / suggestions :")
 
-if st.button("Envoyer l'avis"):
-    st.success("✅ Merci pour votre retour !")
-    with open("feedback.txt", "a", encoding="utf-8") as f:
-        f.write(f"Note: {rating}/5 | Commentaire: {comment}\n")
+# if st.button("Envoyer l'avis"):
+#     st.success("✅ Merci pour votre retour !")
+#     with open("feedback.txt", "a", encoding="utf-8") as f:
+#         f.write(f"Note: {rating}/5 | Commentaire: {comment}\n")
 
-import gspread
-import json
-from oauth2client.service_account import ServiceAccountCredentials
+# import gspread
+# import json
+# from oauth2client.service_account import ServiceAccountCredentials
 
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+# scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 
-creds_dict = st.secrets["google"]
-creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-client = gspread.authorize(creds)
+# creds_dict = st.secrets["google"]
+# creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+# client = gspread.authorize(creds)
 
-sheet = client.open("Lithology Feedback").sheet1
-sheet.append_row([rating, comment])
+# sheet = client.open("Lithology Feedback").sheet1
+# sheet.append_row([rating, comment])
