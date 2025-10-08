@@ -471,7 +471,7 @@ def plot_curves_and_lithology(results: pd.DataFrame):
     # Dernier segment
     color = LITHO_COLORS.get(current_litho, '#D3D3D3')
     ax6.fill_between([0, 1], start_depth, depth[-1], 
-                     facecolor=color, edgecolor='black', linewidth=0.0)
+                     facecolor=color, edgecolor='transparent', linewidth=0.0)
     
     ax6.set_xlim(0, 1)
     ax6.set_ylim(depth_max, depth_min)
