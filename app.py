@@ -432,7 +432,7 @@ def plot_curves_and_lithology(results: pd.DataFrame):
     ax5 = fig.add_subplot(gs[0, 4], sharey=ax1)
     ax5.set_xlim(0, 1)
     ax5.set_ylim(depth_max, depth_min)
-    ax5.set_title("Depth (m)", fontsize=11, fontweight="bold", color="#FCC13E", pad=30)
+    ax5.set_title("Depth (m)", fontsize=10, fontweight="bold", color="#FCC13E", pad=31)
     ax5.yaxis.set_major_locator(MultipleLocator(10))
     ax5.yaxis.set_minor_locator(MultipleLocator(2))
     ax5.tick_params(axis='y', labelsize=8, colors="#FFFFFF", which='both', left=False, right=True, labelleft=False, labelright=True)
@@ -471,7 +471,7 @@ def plot_curves_and_lithology(results: pd.DataFrame):
     # Dernier segment
     color = LITHO_COLORS.get(current_litho, '#D3D3D3')
     ax6.fill_between([0, 1], start_depth, depth[-1], 
-                     facecolor=color, edgecolor='black', linewidth=0.5)
+                     facecolor=color, edgecolor='black', linewidth=0.2)
     
     ax6.set_xlim(0, 1)
     ax6.set_ylim(depth_max, depth_min)
@@ -485,7 +485,7 @@ def plot_curves_and_lithology(results: pd.DataFrame):
     litho_legend_names = ['VCL','PIGE', 'Quartz', 'Igneous', 'Calcite', 'Anhydrite', 'Dolomite', 'Halite', 'Autres_litho']
     legend_elements = [Patch(facecolor=LITHO_COLORS[name], edgecolor='black', label=name) 
                       for name in litho_legend_names if name in LITHO_COLORS]
-    ax6.legend(handles=legend_elements, loc='upper right', bbox_to_anchor=(1.7, 0),
+    ax6.legend(handles=legend_elements, loc='upper right', bbox_to_anchor=(1.7, 1.0),
                fontsize=10, frameon=True, facecolor='#0D1B26', edgecolor="#FFFFFF", 
                labelcolor="#FFFFFF", title='Lithologies', title_fontsize=8)
     plt.setp(ax6.get_legend().get_title(), color="#FCC13E")
