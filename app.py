@@ -230,41 +230,6 @@ def run_predictions(df, models, VCL_cutoff=0.40):
         st.error(f"Erreur de prédiction: {str(e)}")
         return None
 
-def normalize_litho_name(name):
-    """Normalise les noms de lithologie tronqués ou mal formatés"""
-    if pd.isna(name):
-        return "Autres_litho"
-    
-    # Convertir en string et nettoyer
-    name_str = str(name).strip().lower()
-    
-    # Mapping des variations possibles
-    name_mapping = {
-        'calcite': 'Calcite',
-        'calc': 'Calcite',
-        'dolomite': 'Dolomite',
-        'dolomit': 'Dolomite',
-        'dolo': 'Dolomite',
-        'anhydrite': 'Anhydrite',
-        'anhydri': 'Anhydrite',
-        'anhyd': 'Anhydrite',
-        'halite': 'Halite',
-        'hal': 'Halite',
-        'vcl': 'VCL',
-        'quartz': 'Quartz',
-        'igneous': 'Igneous',
-        'pige': 'PIGE'
-    }
-    
-    # Chercher une correspondance
-    for key, value in name_mapping.items():
-        if key in name_str:
-            return value
-    
-    # Si aucune correspondance, retourner Autres_litho
-    return "Autres_litho"
-
-
 def plot_curves_and_lithology(results: pd.DataFrame):
     """Affiche les courbes et la colonne lithologique avec la lithologie dominante"""
     df = results.copy()
@@ -327,12 +292,7 @@ def plot_curves_and_lithology(results: pd.DataFrame):
     autres_mask = dominant_litho == 'Autres'
     
     # Mapping des valeurs de Final_lithology vers les noms
-    int_to_name = {
-        0: "Dolomite",
-        1: "Anhydrite",
-        2: "Halite",
-        3: "Calcite"
-    }
+    int_to_name = {0: "Dolomite", 1: "Anhydrite", 2: "Halite", 3: "Calcite"}
     
     # Compteurs pour diagnostic
     debug_counts = {"Total_Autres": autres_mask.sum(), "NaN": 0, "Mapped": 0, "Unknown": 0}
@@ -348,66 +308,52 @@ def plot_curves_and_lithology(results: pd.DataFrame):
                 debug_counts["NaN"] += 1
                 lithology_found["Autres_litho"] += 1
             else:
+                # Essayer de convertir en int/float
                 try:
-                    # Essayer d'abord le mapping numérique
-                    if isinstance(final_val, (int, np.integer)):
+                    # Si c'est un nombre (int, float, ou string numérique)
+                    if isinstance(final_val, (int, np.integer, float, np.floating)):
                         litho_code = int(final_val)
                         litho_name = int_to_name.get(litho_code, "Autres_litho")
-                    elif isinstance(final_val, (float, np.floating)):
-                        litho_code = int(final_val)
-                        litho_name = int_to_name.get(litho_code, "Autres_litho")
+                        debug_counts["Mapped"] += 1
                     elif isinstance(final_val, str):
-                        # Si c'est un string, normaliser le nom
-                        litho_name = normalize_litho_name(final_val)
+                        # Essayer de convertir string en int
+                        try:
+                            litho_code = int(float(final_val))
+                            litho_name = int_to_name.get(litho_code, "Autres_litho")
+                            debug_counts["Mapped"] += 1
+                        except ValueError:
+                            # Si c'est un string non-numérique
+                            final_lower = final_val.lower()
+                            if 'calcite' in final_lower:
+                                litho_name = "Calcite"
+                            elif 'anhydrite' in final_lower:
+                                litho_name = "Anhydrite"
+                            elif 'dolomite' in final_lower:
+                                litho_name = "Dolomite"
+                            elif 'halite' in final_lower:
+                                litho_name = "Halite"
+                            else:
+                                litho_name = "Autres_litho"
+                                debug_counts["Unknown"] += 1
+                            debug_counts["Mapped"] += 1
                     else:
                         litho_name = "Autres_litho"
+                        debug_counts["Unknown"] += 1
                     
-                    debug_counts["Mapped"] += 1
-                    lithology_found[litho_name] = lithology_found.get(litho_name, 0) + 1
                     dominant_litho[i] = litho_name
+                    lithology_found[litho_name] = lithology_found.get(litho_name, 0) + 1
                     
                 except Exception as e:
                     dominant_litho[i] = "Autres_litho"
                     debug_counts["Unknown"] += 1
                     lithology_found["Autres_litho"] += 1
     
-    # ============ DIAGNOSTIC DÉTAILLÉ ============
-    st.write("=" * 50)
-    st.write("🔬 DIAGNOSTIC MAPPING LITHOLOGIES")
-    st.write("=" * 50)
-    
-    st.info(f"📊 Statistiques de mapping:")
-    st.write(f"- Total 'Autres' détectés: {debug_counts['Total_Autres']}")
-    st.write(f"- NaN (non classifiés): {debug_counts['NaN']}")
-    st.write(f"- Mappés avec succès: {debug_counts['Mapped']}")
-    st.write(f"- Inconnus: {debug_counts['Unknown']}")
-    
-    st.write("📊 Répartition détaillée des lithologies:")
-    for litho, count in sorted(lithology_found.items(), key=lambda x: x[1], reverse=True):
-        if count > 0:
-            percentage = (count / debug_counts['Total_Autres']) * 100 if debug_counts['Total_Autres'] > 0 else 0
-            st.write(f"  • {litho}: {count} points ({percentage:.1f}%)")
-    
-    # Afficher quelques exemples de valeurs Final_lithology
-    if autres_mask.any():
-        sample_vals = Final_lithology[autres_mask][:20]
-        st.write(f"🔬 Échantillon Final_lithology (20 premiers): {list(sample_vals)}")
-    
-    # Vérifier les noms uniques dans dominant_litho
-    unique_lithos = np.unique(dominant_litho)
-    st.write(f"✅ Lithologies uniques dans dominant_litho: {list(unique_lithos)}")
-    
-    # Vérifier le mapping des couleurs
-    st.write("🎨 Couleurs assignées dans Track 6:")
-    litho_color_mapping = {}
-    for litho in unique_lithos:
-        color = LITHO_COLORS.get(litho, '#D3D3D3')
-        litho_color_mapping[litho] = color
-        # Créer un carré de couleur pour visualisation
-        st.markdown(f"  • **{litho}**: <span style='background-color:{color}; padding:2px 20px;'>███</span> {color}", 
-                   unsafe_allow_html=True)
-    
-    st.write("=" * 50)
+    # Stocker les infos de debug pour affichage plus tard
+    debug_info = {
+        "debug_counts": debug_counts,
+        "lithology_found": lithology_found,
+        "sample_values": Final_lithology[autres_mask][:10] if autres_mask.any() else []
+    }
 
     # Limites de profondeur
     depth_min = depth.min()
@@ -500,6 +446,13 @@ def plot_curves_and_lithology(results: pd.DataFrame):
     # ============ TRACK 6: Colonne Lithologique DOMINANTE ============
     ax6 = fig.add_subplot(gs[0, 5], sharey=ax1)
     
+    # Debug: Compter les lithologies uniques dans dominant_litho
+    unique_lithos = np.unique(dominant_litho)
+    litho_color_check = {}
+    for litho in unique_lithos:
+        color = LITHO_COLORS.get(litho, '#D3D3D3')
+        litho_color_check[litho] = color
+    
     # Grouper les segments continus de même lithologie
     current_litho = dominant_litho[0]
     start_depth = depth[0]
@@ -510,7 +463,7 @@ def plot_curves_and_lithology(results: pd.DataFrame):
             end_depth = depth[i] if i == len(depth) - 1 else depth[i-1]
             color = LITHO_COLORS.get(current_litho, '#D3D3D3')
             ax6.fill_between([0, 1], start_depth, end_depth, 
-                             facecolor=color, edgecolor='black', linewidth=0.5)
+                             facecolor=color, edgecolor='black', linewidth=0.3)
             # Nouveau segment
             current_litho = dominant_litho[i]
             start_depth = depth[i]
@@ -529,13 +482,16 @@ def plot_curves_and_lithology(results: pd.DataFrame):
     
     # Ajouter la légende
     from matplotlib.patches import Patch
-    litho_legend_names = ['VCL', 'Quartz', 'Igneous', 'Calcite', 'Anhydrite', 'Dolomite', 'Halite', 'Autres_litho']
-    legend_elements = [Patch(facecolor=LITHO_COLORS.get(name, '#D3D3D3'), edgecolor='black', label=name) 
+    litho_legend_names = ['VCL','PIGE', 'Quartz', 'Igneous', 'Calcite', 'Anhydrite', 'Dolomite', 'Halite', 'Autres_litho']
+    legend_elements = [Patch(facecolor=LITHO_COLORS[name], edgecolor='black', label=name) 
                       for name in litho_legend_names if name in LITHO_COLORS]
-    ax6.legend(handles=legend_elements, loc='upper right', bbox_to_anchor=(1.7, 1.0),
-               fontsize=7, frameon=True, facecolor='#0D1B26', edgecolor="#FFFFFF", 
+    ax6.legend(handles=legend_elements, loc='upper right', bbox_to_anchor=(1.7, 0),
+               fontsize=10, frameon=True, facecolor='#0D1B26', edgecolor="#FFFFFF", 
                labelcolor="#FFFFFF", title='Lithologies', title_fontsize=8)
     plt.setp(ax6.get_legend().get_title(), color="#FCC13E")
+    
+    # Stocker les infos de couleurs pour le diagnostic
+    debug_info['litho_color_check'] = litho_color_check
 
     # Style général - bordures
     for ax in [ax1, ax2, ax3, ax4, ax5, ax6]:
@@ -544,24 +500,62 @@ def plot_curves_and_lithology(results: pd.DataFrame):
             spine.set_linewidth(1.2)
 
     plt.tight_layout()
-    
-    # ============ STATISTIQUES FINALES ============
-    st.write("=" * 50)
-    st.write("📊 RÉPARTITION DES LITHOLOGIES DOMINANTES (tous tracks)")
-    st.write("=" * 50)
-    
-    unique_counts = {}
-    for litho in unique_lithos:
-        count = (dominant_litho == litho).sum()
-        percentage = (count / len(dominant_litho)) * 100
-        unique_counts[litho] = (count, percentage)
-        color = LITHO_COLORS.get(litho, '#D3D3D3')
-        st.markdown(f"  • <span style='background-color:{color}; padding:2px 10px;'>███</span> **{litho}**: {count} points ({percentage:.1f}%)", 
-                   unsafe_allow_html=True)
-    
-    st.write("=" * 50)
-    
     st.pyplot(fig)
+
+    # ============ Statistiques ============
+    st.markdown("### 📊 Statistiques des prédictions")
+    
+    # # DIAGNOSTIC: Afficher les infos de mapping des autres lithologies
+    # st.markdown("#### 🔍 Diagnostic - Mapping des Autres Lithologies")
+    # st.write(f"**Total de points où 'Autres' domine:** {debug_info['debug_counts']['Total_Autres']}")
+    # st.write(f"**Valeurs NaN (non classifiées):** {debug_info['debug_counts']['NaN']}")
+    # st.write(f"**Valeurs mappées avec succès:** {debug_info['debug_counts']['Mapped']}")
+    # st.write(f"**Valeurs inconnues:** {debug_info['debug_counts']['Unknown']}")
+    
+    # st.write("**Lithologies spécifiques trouvées:**")
+    # for litho, count in debug_info['lithology_found'].items():
+    #     if count > 0:
+    #         st.write(f"- {litho}: {count} points")
+    
+    # if len(debug_info['sample_values']) > 0:
+    #     st.write(f"**Échantillon de Final_lithology (10 premiers):** {list(debug_info['sample_values'])}")
+    
+    # # Afficher le mapping couleur/lithologie
+    # st.write("**Couleurs assignées dans Track 6:**")
+    # for litho, color in debug_info['litho_color_check'].items():
+    #     st.markdown(f"- {litho}: <span style='color:{color}; font-weight:bold;'>███</span> {color}", unsafe_allow_html=True)
+    
+    # st.markdown("---")
+    
+    # Comptage des lithologies dominantes
+    from collections import Counter
+    litho_counts = Counter(dominant_litho)
+    
+    st.write("**Répartition des lithologies dominantes:**")
+    for litho, count in litho_counts.most_common():
+        percentage = (count / len(dominant_litho)) * 100
+        color = LITHO_COLORS.get(litho, '#D3D3D3')
+        st.markdown(f"- <span style='color:{color}; font-weight:bold;'>███</span> {litho}: {count} points ({percentage:.1f}%)", unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("VCL moyen", f"{VSH.mean():.2%}")
+        st.metric("VCL max", f"{VSH.max():.2%}")
+    
+    with col2:
+        st.metric("Quartz+PIGE moyen", f"{Quartz_PIGE.mean():.2%}")
+        st.metric("PIGE moyen", f"{PIGE.mean():.2%}")
+    
+    with col3:
+        st.metric("Igneous moyen", f"{Igneous.mean():.2%}")
+        st.metric("Igneous max", f"{Igneous.max():.2%}")
+    
+    with col4:
+        st.metric("Autres lithologies", f"{Autres_reg.mean():.2%}")
+        st.metric("Autres max", f"{Autres_reg.max():.2%}")
 
 # -------------------- Interface utilisateur --------------------
 st.title("LithoVision Pro")
