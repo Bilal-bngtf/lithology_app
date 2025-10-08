@@ -603,12 +603,13 @@ if st.button("Envoyer l'avis"):
         f.write(f"Note: {rating}/5 | Commentaire: {comment}\n")
 
 import gspread
+import json
 from oauth2client.service_account import ServiceAccountCredentials
 
-# Connexion à ton Google Sheet (avec clés API dans secrets)
-scope = ["https://spreadsheets.google.com/feeds",
-         "https://www.googleapis.com/auth/drive"]
-creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+
+creds_dict = st.secrets["google"]
+creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
 
 sheet = client.open("Lithology Feedback").sheet1
