@@ -179,14 +179,12 @@ def clean_dataset(df):
     # Afficher les statistiques dans Streamlit
     st.markdown("### 🔧 Nettoyage des données")
     st.write(f"**Lignes conservées :** {df_cleaned.shape[0]} / {df.shape[0]}")
-    st.write(f"**Valeurs manquantes totales :** {df_cleaned[X_cols].isnull().sum().sum()}")
-    st.write(f"**Valeurs manquantes dans KTH :** {df_cleaned['KTH'].isnull().sum()}")
     
     # Heatmap des NaN
-    fig, ax = plt.subplots(figsize=(12, 5))
-    sns.heatmap(df_cleaned[X_cols].isnull(), cmap="viridis", cbar=False, ax=ax)
-    ax.set_title("✅ Heatmap après suppression et remplacement des valeurs manquantes")
-    st.pyplot(fig)
+    # fig, ax = plt.subplots(figsize=(12, 5))
+    # sns.heatmap(df_cleaned[X_cols].isnull(), cmap="viridis", cbar=False, ax=ax)
+    # ax.set_title("✅ Heatmap après suppression et remplacement des valeurs manquantes")
+    # st.pyplot(fig)
     
     # (Optionnel) Sauvegarde temporaire
     df_cleaned.to_excel("data_cleaned.xlsx", index=False)
