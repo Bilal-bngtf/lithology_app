@@ -613,5 +613,5 @@ creds_dict = st.secrets["google"]
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
 
-sheet = client.open("Lithology Feedback").sheet1
+sheet = client.open("LithoVision Pro Feedback").sheet1
 sheet.append_row([rating, comment])
