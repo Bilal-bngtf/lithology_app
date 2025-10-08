@@ -177,7 +177,7 @@ def clean_dataset(df):
     df_cleaned.fillna(0, inplace=True)
     
     # Afficher les statistiques dans Streamlit
-    st.markdown("### 🔧 Nettoyage des données")
+    # st.markdown("### 🔧 Nettoyage des données")
     st.write(f"**Lignes conservées :** {df_cleaned.shape[0]} / {df.shape[0]}")
     
     # Heatmap des NaN
@@ -607,7 +607,7 @@ if up:
         st.dataframe(df.head(10), use_container_width=True)
 
         # Étape de nettoyage
-        st.markdown("### 🔍 Nettoyage des données")
+        st.markdown("### Nettoyage des données")
         df_cleaned = clean_dataset(df)
 
         if 'DEPTH' not in df_cleaned.columns:
