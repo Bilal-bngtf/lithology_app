@@ -435,7 +435,7 @@ def plot_curves_and_lithology(results: pd.DataFrame):
     ax5.set_title("Depth (m)", fontsize=10, fontweight="bold", color="#FCC13E", pad=30.5)
     ax5.yaxis.set_major_locator(MultipleLocator(10))
     ax5.yaxis.set_minor_locator(MultipleLocator(2))
-    ax5.tick_params(axis='y', labelsize=8, colors="#FFFFFF", which='both', left=False, right=True, labelleft=False, labelright=True)
+    ax5.tick_params(axis='y', labelsize=10, colors="#FFFFFF", which='both', left=False, right=True, labelleft=False, labelright=True)
     ax5.tick_params(axis='x', labelsize=0, top=False, bottom=False)
     ax5.grid(True, alpha=0.4, color='#0E4470', linestyle='-', linewidth=0.5, axis='y', which='major')
     ax5.grid(True, alpha=0.2, color='#0E4470', linestyle='--', linewidth=0.3, axis='y', which='minor')
@@ -471,7 +471,7 @@ def plot_curves_and_lithology(results: pd.DataFrame):
     # Dernier segment
     color = LITHO_COLORS.get(current_litho, '#D3D3D3')
     ax6.fill_between([0, 1], start_depth, depth[-1], 
-                     facecolor=color, edgecolor='black', linewidth=0.2)
+                     facecolor=color, edgecolor='black', linewidth=0.05)
     
     ax6.set_xlim(0, 1)
     ax6.set_ylim(depth_max, depth_min)
