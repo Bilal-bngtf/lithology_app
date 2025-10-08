@@ -7,4 +7,13 @@ lasio
 matplotlib
 plotly
 openpyxl
+catboost
+lightgbm
+
+# Logging / Utils
+tqdm
+
+# (Optionnel si tu utilises Google Sheets pour feedback)
+gspread
+oauth2client
 
