@@ -6,6 +6,7 @@ matplotlib
 Pillow
 joblib
 openpyxl
+seaborn
 
 # --- Machine Learning ---
 scikit-learn
