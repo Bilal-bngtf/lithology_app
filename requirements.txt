@@ -1,19 +1,21 @@
+# --- Core libraries ---
 streamlit
 pandas
 numpy
+matplotlib
+Pillow
+joblib
+openpyxl
+
+# --- Machine Learning ---
 scikit-learn
 xgboost
-lasio
-matplotlib
-plotly
-openpyxl
 catboost
 lightgbm
 
-# Logging / Utils
+# --- Optionnel mais recommandé ---
 tqdm
 
-# (Optionnel si tu utilises Google Sheets pour feedback)
+# --- Si tu utilises Google Sheets (pour les avis utilisateurs) ---
 gspread
 oauth2client
-
