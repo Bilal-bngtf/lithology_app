@@ -113,7 +113,8 @@ LITHO_COLORS = {
 def load_models():
     """Charge les modèles pré-entraînés"""
     try:
-        base_path = Path(__file__).resolve().parent.parent / "models" / "trained"
+        # base_path = Path(__file__).resolve().parent.parent / "models" / "trained"
+        base_path = Path("src/models/trained")
         models = {
             "VCL_reg": load(f'{base_path}/Regression/reg_VCL.joblib'),
             "Quartz_reg": load(f'{base_path}/Regression/reg_Quartz.joblib'),
