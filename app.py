@@ -160,28 +160,40 @@ def process_file(uploaded_file):
         st.error(f"❌ Erreur de lecture du fichier : {e}")
         return None
 
+
+
+
 def clean_dataset(df):
-    """Nettoie le dataset en supprimant les lignes trop incomplètes et visualise les NaN."""
+    """Nettoie le dataset en supprimant les lignes avec plus de 3 valeurs manquantes ou -9999."""
     X_cols = ['CALX','CNC','DTCQI','GR','K','KTH','M2R1','M2R2','M2R3','M2R6','M2R9','TH','U','PE','ZDEN']
     
-    # Supprimer les lignes avec plus de 3 valeurs manquantes dans ces colonnes
+    # Remplacer les valeurs -9999 par NaN
+    df[X_cols] = df[X_cols].replace(-9999, np.nan)
+    
+    # Supprimer les lignes avec plus de 3 NaN dans ces colonnes
     df_cleaned = df[df[X_cols].isnull().sum(axis=1) <= 3].copy()
     
-    # Remplacer les NaN restants par 0 (ou autre stratégie si tu préfères)
+    # Remplacer les NaN restants par 0 (ou une autre stratégie si tu veux)
     df_cleaned.fillna(0, inplace=True)
-
+    
     # Afficher les statistiques dans Streamlit
+    st.markdown("### 🔧 Nettoyage des données")
     st.write(f"**Lignes conservées :** {df_cleaned.shape[0]} / {df.shape[0]}")
     st.write(f"**Valeurs manquantes totales :** {df_cleaned[X_cols].isnull().sum().sum()}")
     st.write(f"**Valeurs manquantes dans KTH :** {df_cleaned['KTH'].isnull().sum()}")
-
-    # Heatmap interactive
-    # fig, ax = plt.subplots(figsize=(12, 5))
-    # sns.heatmap(df_cleaned[X_cols].isnull(), cmap="viridis", cbar=False, ax=ax)
-    # ax.set_title("✅ Heatmap après nettoyage des valeurs manquantes")
-    # st.pyplot(fig)
-
+    
+    # Heatmap des NaN
+    fig, ax = plt.subplots(figsize=(12, 5))
+    sns.heatmap(df_cleaned[X_cols].isnull(), cmap="viridis", cbar=False, ax=ax)
+    ax.set_title("✅ Heatmap après suppression et remplacement des valeurs manquantes")
+    st.pyplot(fig)
+    
+    # (Optionnel) Sauvegarde temporaire
+    df_cleaned.to_excel("data_cleaned.xlsx", index=False)
+    st.success("📁 Données nettoyées sauvegardées dans 'data_cleaned.xlsx'")
+    
     return df_cleaned
+
 
 def run_predictions(df, models, VCL_cutoff=0.40):
     """Exécute les prédictions de lithologie"""
