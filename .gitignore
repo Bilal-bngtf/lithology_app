@@ -1,4 +1,18 @@
-"credentials.json" 
-"credentials.json" 
-"credentials.json" 
-"credentials.json" 
+# Secrets (Google Sheets feedback)
+credentials.json
+.streamlit/secrets.toml
+
+# Runtime files
+feedback.txt
+data_cleaned.xlsx
+*.log
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Well data (confidential, never commit)
+data/*.xlsx
+data/*.las
