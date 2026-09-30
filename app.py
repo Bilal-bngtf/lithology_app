@@ -12,7 +12,7 @@ from matplotlib.ticker import MultipleLocator
 import seaborn as sns
 
 # Configuration du logging
-logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
+logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 logger = logging.getLogger(__name__)
 
 # Initialisation de l'état de session
@@ -22,7 +22,7 @@ if 'run_predictions' not in st.session_state:
 # Config de la page avec ton logo comme icône
 st.set_page_config(
     page_title="LithoVision Pro",
-    page_icon="src/assets/logo.png",  # ton favicon déjà prêt
+    page_icon="src/assets/logo.png" if Path("src/assets/logo.png").exists() else "🪨",
     layout="wide"
 )
 
@@ -163,18 +163,26 @@ def process_file(uploaded_file):
 
 
 
+REQUIRED_COLUMNS = ['DEPTH','CALX','CNC','DTCQI','GR','K','KTH','M2R1','M2R2','M2R3','M2R6','M2R9','TH','U','PE','ZDEN']
+
+
 def clean_dataset(df):
-    """Nettoie le dataset en supprimant les lignes avec plus de 3 valeurs manquantes ou -9999."""
-    X_cols = ['CALX','CNC','DTCQI','GR','K','KTH','M2R1','M2R2','M2R3','M2R6','M2R9','TH','U','PE','ZDEN']
+    """Remplace -9999 par NaN et supprime les lignes avec plus de 3 logs manquants.
+
+    Les NaN restants sont conservés : XGBoost et CatBoost les gèrent nativement
+    (même traitement qu'à l'entraînement).
+    """
+    missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
+    if missing:
+        st.error(f"Colonnes manquantes dans le fichier : {', '.join(missing)}")
+        return None
+    X_cols = REQUIRED_COLUMNS[1:]
     
     # Remplacer les valeurs -9999 par NaN
     df[X_cols] = df[X_cols].replace(-9999, np.nan)
     
     # Supprimer les lignes avec plus de 3 NaN dans ces colonnes
     df_cleaned = df[df[X_cols].isnull().sum(axis=1) <= 3].copy()
-    
-    # Remplacer les NaN restants par 0 (ou une autre stratégie si tu veux)
-    df_cleaned.fillna(0, inplace=True)
     
     # Afficher les statistiques dans Streamlit
     # st.markdown("### 🔧 Nettoyage des données")
@@ -186,19 +194,12 @@ def clean_dataset(df):
     # ax.set_title("✅ Heatmap après suppression et remplacement des valeurs manquantes")
     # st.pyplot(fig)
     
-    # (Optionnel) Sauvegarde temporaire
-    df_cleaned.to_excel("data_cleaned.xlsx", index=False)
-    st.success("📁 Données nettoyées sauvegardées dans 'data_cleaned.xlsx'")
-    
     return df_cleaned
 
 
 def run_predictions(df, models, VCL_cutoff=0.40):
     """Exécute les prédictions de lithologie"""
     try:
-        # Remplir les NaN avec 0 pour éviter les erreurs de prédiction
-        df.fillna(0, inplace=True)
-
         # ----------------------- VCL -----------------------
         features_vcl = ['CALX', 'GR', 'CNC', 'KTH', 'DTCQI', 'K', 'TH', 'ZDEN']
         df['VCL_pred'] = models['VCL_reg'].predict(df[features_vcl])
@@ -260,7 +261,7 @@ def run_predictions(df, models, VCL_cutoff=0.40):
         st.error(f"Erreur de prédiction: {str(e)}")
         return None
 
-def plot_curves_and_lithology(results: pd.DataFrame):
+def plot_curves_and_lithology(results: pd.DataFrame, vcl_cutoff: float = 0.40):
     """Affiche les courbes et la colonne lithologique avec la lithologie dominante"""
     df = results.copy()
 
@@ -296,7 +297,6 @@ def plot_curves_and_lithology(results: pd.DataFrame):
     Final_lithology = df['Final_lithology'].values[order]
     
     # CONTRAINTE: PIGE = 0 si VCL > cutoff OU Igneous > 0 OU Autres_litho > 0
-    vcl_cutoff = 0.40
     PIGE = PIGE_original.copy()
     mask_pige_zero = (VSH > vcl_cutoff) | (Igneous > 0) | (Autres_reg > 0)
     PIGE[mask_pige_zero] = 0.0
@@ -536,28 +536,28 @@ def plot_curves_and_lithology(results: pd.DataFrame):
     # ============ Statistiques ============
     st.markdown("### 📊 Statistiques des prédictions")
     
-    # DIAGNOSTIC: Afficher les infos de mapping des autres lithologies
-    st.markdown("#### 🔍 Diagnostic - Mapping des Autres Lithologies")
-    st.write(f"**Total de points où 'Autres' domine:** {debug_info['debug_counts']['Total_Autres']}")
-    st.write(f"**Valeurs NaN (non classifiées):** {debug_info['debug_counts']['NaN']}")
-    st.write(f"**Valeurs mappées avec succès:** {debug_info['debug_counts']['Mapped']}")
-    st.write(f"**Valeurs inconnues:** {debug_info['debug_counts']['Unknown']}")
-    
-    st.write("**Lithologies spécifiques trouvées:**")
-    for litho, count in debug_info['lithology_found'].items():
-        if count > 0:
-            st.write(f"- {litho}: {count} points")
-    
-    if len(debug_info['sample_values']) > 0:
-        st.write(f"**Échantillon de Final_lithology (10 premiers):** {list(debug_info['sample_values'])}")
-    
-    # Afficher le mapping couleur/lithologie
-    st.write("**🎨 Couleurs assignées dans Track 6:**")
-    for litho, color in debug_info['litho_color_check'].items():
-        st.markdown(f"- **{litho}**: ███ {color}", unsafe_allow_html=True)
-    
+    # Diagnostic (repliable) : mapping des autres lithologies
+    with st.expander("🔍 Diagnostic - mapping des autres lithologies"):
+        st.write(f"**Total de points où 'Autres' domine:** {debug_info['debug_counts']['Total_Autres']}")
+        st.write(f"**Valeurs NaN (non classifiées):** {debug_info['debug_counts']['NaN']}")
+        st.write(f"**Valeurs mappées avec succès:** {debug_info['debug_counts']['Mapped']}")
+        st.write(f"**Valeurs inconnues:** {debug_info['debug_counts']['Unknown']}")
+
+        st.write("**Lithologies spécifiques trouvées:**")
+        for litho, count in debug_info['lithology_found'].items():
+            if count > 0:
+                st.write(f"- {litho}: {count} points")
+
+        if len(debug_info['sample_values']) > 0:
+            st.write(f"**Échantillon de Final_lithology (10 premiers):** {list(debug_info['sample_values'])}")
+
+        # Afficher le mapping couleur/lithologie
+        st.write("**🎨 Couleurs assignées dans Track 6:**")
+        for litho, color in debug_info['litho_color_check'].items():
+            st.markdown(f"- **{litho}**: ███ {color}", unsafe_allow_html=True)
+
     st.markdown("---")
-    
+
     # Comptage des lithologies dominantes
     from collections import Counter
     litho_counts = Counter(dominant_litho)
@@ -610,17 +610,21 @@ if up:
         st.markdown("### Nettoyage des données")
         df_cleaned = clean_dataset(df)
 
-        if 'DEPTH' not in df_cleaned.columns:
-            st.error("La colonne 'DEPTH' est requise dans le fichier.")
-        elif run:
+        if df_cleaned is not None and run:
             with st.spinner("Prédictions en cours..."):
                 models = load_models()
                 if models is None:
                     st.stop()
                 res = run_predictions(df_cleaned.copy(), models, VCL_cutoff=vcl_cutoff)
                 if res is not None:
-                    plot_curves_and_lithology(res)
+                    plot_curves_and_lithology(res, vcl_cutoff=vcl_cutoff)
                     st.success("Terminé ✅")
+                    st.download_button(
+                        "📥 Télécharger les prédictions (CSV)",
+                        res.to_csv(index=False).encode("utf-8"),
+                        file_name="lithovision_predictions.csv",
+                        mime="text/csv",
+                    )
 
 
 st.markdown("---")
